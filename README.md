@@ -1,14 +1,13 @@
-# TUI Flappy Bird
+# Terminal Arcade
 
-A terminal-based (TUI) clone of the classic Flappy Bird game, written in TypeScript and playable directly in your terminal.
+A collection of classic terminal-based (TUI) games written in TypeScript. Includes Flappy Bird, Snake, Pong, and Tetris! Playable directly in your terminal.
 
 ## Features
 
-- **Fluid Physics:** Smooth 30 FPS gameplay with fine-tuned gravity and flap mechanics.
+- **Four Classic Games:** Enjoy Flappy Bird, Snake, Pong, and Tetris.
+- **High Performance:** Uses `terminal-kit` for fluid, flicker-free rendering and true colors.
 - **Terminal Resize Support:** The game dynamically adjusts to fit your terminal window size.
-- **Persistent Leaderboard:** Saves your top 10 highest scores locally.
-- **Colorful Graphics:** Uses ANSI escape codes for a vibrant terminal experience.
-- **Interactive Menu:** Easy-to-use menu to start the game, view scores, or quit.
+- **Interactive Menu:** Easy-to-use menu to select games and navigate.
 
 ## Installation
 
@@ -37,18 +36,19 @@ A terminal-based (TUI) clone of the classic Flappy Bird game, written in TypeScr
 
 ## How to Play
 
-Once installed and linked, you can launch the game from any terminal window by running:
+Once installed and linked, you can launch the game library from any terminal window by running:
 
 ```bash
-flappybird
+games
 ```
 
-### Controls
+### General Controls
 
-- **Up Arrow / W / Space:** Flap (jump) or navigate menus.
-- **Down Arrow / S:** Navigate menus.
-- **Enter / Space:** Select menu option.
-- **Ctrl + C:** Quit the game instantly.
+- **Up/Down Arrows:** Navigate menus or move paddles.
+- **Left/Right Arrows:** Move Snake/Tetris pieces.
+- **Space:** Flap (Flappy Bird) or Drop/Rotate (Tetris).
+- **Enter:** Select menu options.
+- **Ctrl + C:** Quit the game entirely.
 
 ## License
 

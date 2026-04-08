@@ -1,9 +1,9 @@
 {
-  "name": "tui-flappy-bird",
+  "name": "terminal-arcade",
   "version": "1.0.0",
-  "description": "Terminal Flappy Bird",
+  "description": "Terminal Game Arcade",
   "bin": {
-    "flappybird": "./dist/index.js"
+    "games": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -11,8 +11,12 @@
   },
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "terminal-kit": "^3.1.2"
+  },
   "devDependencies": {
-    "@types/node": "^20.19.39",
-    "typescript": "^5.9.3"
+    "@types/node": "^20.0.0",
+    "@types/terminal-kit": "^2.5.7",
+    "typescript": "^5.0.0"
   }
 }
