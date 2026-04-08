@@ -1,12 +1,14 @@
-import { term, Game } from '../core/engine';
+import { term, Game, drawGameBorder } from '../core/engine';
 
 export class Snake implements Game {
     name = "Snake";
     private onExit!: () => void;
     private gameInterval: any;
     
-    private width = 80;
-    private height = 24;
+    private playWidth = 80;
+    private playHeight = 24;
+    private termW = 80;
+    private termH = 24;
     private snake: {x: number, y: number}[] = [];
     private food = {x: 0, y: 0};
     private dir = {x: 2, y: 0};
@@ -16,6 +18,8 @@ export class Snake implements Game {
 
     start(onExit: () => void) {
         this.onExit = onExit;
+        this.termW = term.width;
+        this.termH = term.height;
         term.on('key', this.handleKey);
         term.on('terminal', this.handleResize);
         this.resetGame();
@@ -30,8 +34,8 @@ export class Snake implements Game {
 
     private handleResize = (name: string) => {
         if (name === 'resize') {
-            this.width = term.width;
-            this.height = term.height;
+            this.termW = term.width;
+            this.termH = term.height;
             if (this.state === 'GAMEOVER') this.render();
         }
     }
@@ -51,18 +55,18 @@ export class Snake implements Game {
 
     private spawnFood() {
         this.food = {
-            x: Math.floor(Math.random() * (this.width / 2)) * 2,
-            y: Math.floor(Math.random() * this.height)
+            x: Math.floor(Math.random() * (this.playWidth / 2)) * 2,
+            y: Math.floor(Math.random() * this.playHeight)
         };
     }
 
     private resetGame() {
-        this.width = term.width;
-        this.height = term.height;
+        this.termW = term.width;
+        this.termH = term.height;
         this.snake = [
-            {x: Math.floor(this.width/4)*2, y: Math.floor(this.height/2)},
-            {x: Math.floor(this.width/4)*2 - 2, y: Math.floor(this.height/2)},
-            {x: Math.floor(this.width/4)*2 - 4, y: Math.floor(this.height/2)},
+            {x: Math.floor(this.playWidth/4)*2, y: Math.floor(this.playHeight/2)},
+            {x: Math.floor(this.playWidth/4)*2 - 2, y: Math.floor(this.playHeight/2)},
+            {x: Math.floor(this.playWidth/4)*2 - 4, y: Math.floor(this.playHeight/2)},
         ];
         this.dir = {x: 2, y: 0};
         this.nextDir = {x: 2, y: 0};
@@ -76,22 +80,36 @@ export class Snake implements Game {
 
     private render() {
         const tk = require('terminal-kit');
-        const buffer = new tk.ScreenBuffer({ width: this.width, height: this.height, dst: term });
+        const buffer = new tk.ScreenBuffer({ width: this.termW, height: this.termH, dst: term });
         buffer.fill({ attr: { bgColor: 'black' } });
 
-        // Draw Food
-        buffer.put({ x: this.food.x, y: this.food.y, attr: { bgColor: 'red' } }, '  ');
+        const offsetX = Math.max(0, Math.floor((this.termW - this.playWidth) / 2));
+        const offsetY = Math.max(0, Math.floor((this.termH - this.playHeight) / 2));
 
-        // Draw Snake
-        for (const segment of this.snake) {
-            buffer.put({ x: segment.x, y: segment.y, attr: { bgColor: 'green' } }, '  ');
+        drawGameBorder(buffer, offsetX, offsetY, this.playWidth, this.playHeight, 'green');
+
+        // Play area background
+        for (let y = 0; y < this.playHeight; y++) {
+            for (let x = 0; x < this.playWidth; x++) {
+                buffer.put({ x: offsetX + x, y: offsetY + y, attr: { bgColor: 'black' } }, ' ');
+            }
         }
 
-        buffer.put({ x: 2, y: 1, attr: { color: 'white', bold: true } }, `Score: ${this.score}`);
+        // Draw Food
+        buffer.put({ x: offsetX + this.food.x, y: offsetY + this.food.y, attr: { color: 'brightRed' } }, '██');
+
+        // Draw Snake
+        for (let i = 0; i < this.snake.length; i++) {
+            const segment = this.snake[i];
+            const color = i === 0 ? 'brightGreen' : 'green';
+            buffer.put({ x: offsetX + segment.x, y: offsetY + segment.y, attr: { color } }, '██');
+        }
+
+        buffer.put({ x: offsetX + 2, y: offsetY + 1, attr: { color: 'white', bold: true } }, `Score: ${this.score}`);
 
         if (this.state === 'GAMEOVER') {
             const msg = " GAME OVER - Press SPACE to Restart, ESC to Exit ";
-            buffer.put({ x: Math.floor(this.width/2 - msg.length/2), y: Math.floor(this.height/2), attr: { color: 'white', bgColor: 'red', bold: true } }, msg);
+            buffer.put({ x: offsetX + Math.floor(this.playWidth/2 - msg.length/2), y: offsetY + Math.floor(this.playHeight/2), attr: { color: 'white', bgColor: 'red', bold: true } }, msg);
         }
 
         buffer.draw({ delta: true });
@@ -104,7 +122,7 @@ export class Snake implements Game {
         const head = this.snake[0];
         const next = { x: head.x + this.dir.x, y: head.y + this.dir.y };
 
-        if (next.x < 0 || next.x >= this.width || next.y < 0 || next.y >= this.height) {
+        if (next.x < 0 || next.x >= this.playWidth || next.y < 0 || next.y >= this.playHeight) {
             this.state = 'GAMEOVER';
         }
 

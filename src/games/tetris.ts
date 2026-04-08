@@ -1,4 +1,4 @@
-import { term, Game } from '../core/engine';
+import { term, Game, drawGameBorder } from '../core/engine';
 
 const SHAPES = [
     [[1,1,1,1]], // I
@@ -17,8 +17,12 @@ export class Tetris implements Game {
     private onExit!: () => void;
     private gameInterval: any;
     
-    private width = 10;
-    private height = 20;
+    private blocksW = 10;
+    private playHeight = 20;
+    private playWidth = 20; // blocksW * 2
+    private termW = 80;
+    private termH = 24;
+    
     private grid: (number | null)[][] = [];
     private currentPiece: { shape: number[][], x: number, y: number, color: string } | null = null;
     private score = 0;
@@ -26,14 +30,26 @@ export class Tetris implements Game {
 
     start(onExit: () => void) {
         this.onExit = onExit;
+        this.termW = term.width;
+        this.termH = term.height;
         term.on('key', this.handleKey);
+        term.on('terminal', this.handleResize);
         this.resetGame();
     }
 
     private stop() {
         if (this.gameInterval) clearInterval(this.gameInterval);
         term.off('key', this.handleKey);
+        term.off('terminal', this.handleResize);
         this.onExit();
+    }
+
+    private handleResize = (name: string) => {
+        if (name === 'resize') {
+            this.termW = term.width;
+            this.termH = term.height;
+            if (this.state === 'GAMEOVER') this.render();
+        }
     }
 
     private handleKey = (name: string) => {
@@ -51,7 +67,9 @@ export class Tetris implements Game {
     }
 
     private resetGame() {
-        this.grid = Array(this.height).fill(null).map(() => Array(this.width).fill(null));
+        this.termW = term.width;
+        this.termH = term.height;
+        this.grid = Array(this.playHeight).fill(null).map(() => Array(this.blocksW).fill(null));
         this.score = 0;
         this.state = 'PLAYING';
         this.spawnPiece();
@@ -64,7 +82,7 @@ export class Tetris implements Game {
         const type = Math.floor(Math.random() * SHAPES.length);
         this.currentPiece = {
             shape: SHAPES[type],
-            x: Math.floor(this.width / 2) - Math.floor(SHAPES[type][0].length / 2),
+            x: Math.floor(this.blocksW / 2) - Math.floor(SHAPES[type][0].length / 2),
             y: 0,
             color: COLORS[type]
         };
@@ -100,7 +118,7 @@ export class Tetris implements Game {
                 if (shape[row][col]) {
                     const nx = x + col;
                     const ny = y + row;
-                    if (nx < 0 || nx >= this.width || ny >= this.height || (ny >= 0 && this.grid[ny][nx] !== null)) {
+                    if (nx < 0 || nx >= this.blocksW || ny >= this.playHeight || (ny >= 0 && this.grid[ny][nx] !== null)) {
                         return true;
                     }
                 }
@@ -128,10 +146,10 @@ export class Tetris implements Game {
 
     private clearLines() {
         let linesCleared = 0;
-        for (let y = this.height - 1; y >= 0; y--) {
+        for (let y = this.playHeight - 1; y >= 0; y--) {
             if (this.grid[y].every(cell => cell !== null)) {
                 this.grid.splice(y, 1);
-                this.grid.unshift(Array(this.width).fill(null));
+                this.grid.unshift(Array(this.blocksW).fill(null));
                 linesCleared++;
                 y++; 
             }
@@ -143,28 +161,21 @@ export class Tetris implements Game {
 
     private render() {
         const tk = require('terminal-kit');
-        const termW = term.width;
-        const termH = term.height;
-        const buffer = new tk.ScreenBuffer({ width: termW, height: termH, dst: term });
+        const buffer = new tk.ScreenBuffer({ width: this.termW, height: this.termH, dst: term });
         buffer.fill({ attr: { bgColor: 'black' } });
 
-        const offsetX = Math.floor(termW / 2) - this.width;
-        const offsetY = Math.floor(termH / 2) - Math.floor(this.height / 2);
+        const offsetX = Math.max(0, Math.floor((this.termW - this.playWidth) / 2));
+        const offsetY = Math.max(0, Math.floor((this.termH - this.playHeight) / 2));
 
-        // Draw border
-        for (let y = 0; y < this.height; y++) {
-            buffer.put({ x: offsetX - 2, y: offsetY + y, attr: { bgColor: 'gray' } }, '  ');
-            buffer.put({ x: offsetX + this.width * 2, y: offsetY + y, attr: { bgColor: 'gray' } }, '  ');
-        }
-        for (let x = -2; x < this.width * 2 + 2; x+=2) {
-            buffer.put({ x: offsetX + x, y: offsetY + this.height, attr: { bgColor: 'gray' } }, '  ');
-        }
+        drawGameBorder(buffer, offsetX, offsetY, this.playWidth, this.playHeight, 'yellow');
 
-        // Draw grid
-        for (let y = 0; y < this.height; y++) {
-            for (let x = 0; x < this.width; x++) {
+        // Draw grid inside border
+        for (let y = 0; y < this.playHeight; y++) {
+            for (let x = 0; x < this.blocksW; x++) {
                 if (this.grid[y][x] !== null) {
                     buffer.put({ x: offsetX + x * 2, y: offsetY + y, attr: { bgColor: COLORS[this.grid[y][x] as number] } }, '  ');
+                } else {
+                    buffer.put({ x: offsetX + x * 2, y: offsetY + y, attr: { bgColor: 'black' } }, '  ');
                 }
             }
         }
@@ -180,11 +191,12 @@ export class Tetris implements Game {
             }
         }
 
-        buffer.put({ x: offsetX + this.width * 2 + 4, y: offsetY + 2, attr: { color: 'white', bold: true } }, `Score: ${this.score}`);
+        // Draw score outside border
+        buffer.put({ x: offsetX + this.playWidth + 4, y: offsetY + 2, attr: { color: 'white', bold: true } }, `Score: ${this.score}`);
 
         if (this.state === 'GAMEOVER') {
             const msg = " GAMEOVER! SPACE=Restart, ESC=Exit ";
-            buffer.put({ x: Math.floor(termW/2 - msg.length/2), y: Math.floor(termH/2), attr: { color: 'white', bgColor: 'red', bold: true } }, msg);
+            buffer.put({ x: offsetX + Math.floor(this.playWidth/2 - msg.length/2), y: offsetY + Math.floor(this.playHeight/2), attr: { color: 'white', bgColor: 'red', bold: true } }, msg);
         }
 
         buffer.draw({ delta: true });

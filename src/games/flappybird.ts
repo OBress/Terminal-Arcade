@@ -1,12 +1,14 @@
-import { term, Game } from '../core/engine';
+import { term, Game, drawGameBorder } from '../core/engine';
 
 export class FlappyBird implements Game {
     name = "Flappy Bird";
     private onExit!: () => void;
     private gameInterval: any;
     
-    private width = 80;
-    private height = 24;
+    private playWidth = 80;
+    private playHeight = 24;
+    private termW = 80;
+    private termH = 24;
     private FPS = 30;
     private birdY = 12;
     private birdVelocity = 0;
@@ -19,6 +21,8 @@ export class FlappyBird implements Game {
 
     start(onExit: () => void) {
         this.onExit = onExit;
+        this.termW = term.width;
+        this.termH = term.height;
         term.on('key', this.handleKey);
         term.on('terminal', this.handleResize);
         this.resetGame();
@@ -26,8 +30,8 @@ export class FlappyBird implements Game {
 
     private handleResize = (name: string) => {
         if (name === 'resize') {
-            this.width = term.width;
-            this.height = term.height;
+            this.termW = term.width;
+            this.termH = term.height;
             if (this.state === 'GAMEOVER') this.render();
         }
     }
@@ -52,9 +56,9 @@ export class FlappyBird implements Game {
     }
 
     private resetGame() {
-        this.width = term.width;
-        this.height = term.height;
-        this.birdY = this.height / 2;
+        this.termW = term.width;
+        this.termH = term.height;
+        this.birdY = this.playHeight / 2;
         this.birdVelocity = 0;
         this.score = 0;
         this.frames = 0;
@@ -66,18 +70,30 @@ export class FlappyBird implements Game {
 
     private render() {
         const tk = require('terminal-kit');
-        const buffer = new tk.ScreenBuffer({ width: this.width, height: this.height, dst: term });
+        const buffer = new tk.ScreenBuffer({ width: this.termW, height: this.termH, dst: term });
         
-        buffer.fill({ attr: { bgColor: 'brightCyan' } });
+        buffer.fill({ attr: { bgColor: 'black' } });
+
+        const offsetX = Math.max(0, Math.floor((this.termW - this.playWidth) / 2));
+        const offsetY = Math.max(0, Math.floor((this.termH - this.playHeight) / 2));
+
+        drawGameBorder(buffer, offsetX, offsetY, this.playWidth, this.playHeight, 'cyan');
+
+        // Fill sky
+        for (let y = 0; y < this.playHeight - 1; y++) {
+            for (let x = 0; x < this.playWidth; x++) {
+                buffer.put({ x: offsetX + x, y: offsetY + y, attr: { bgColor: 'blue' } }, ' ');
+            }
+        }
 
         // Draw pipes
         for (const pipe of this.pipes) {
             const px = Math.floor(pipe.x);
             for (let x = px; x < px + 8; x++) {
-                if (x >= 0 && x < this.width) {
-                    for (let y = 0; y < this.height; y++) {
+                if (x >= 0 && x < this.playWidth) {
+                    for (let y = 0; y < this.playHeight - 1; y++) {
                         if (y < pipe.gapY || y >= pipe.gapY + 8) {
-                            buffer.put({ x, y, attr: { bgColor: 'green' } }, ' ');
+                            buffer.put({ x: offsetX + x, y: offsetY + y, attr: { bgColor: 'green', color: 'darkGreen' } }, '█');
                         }
                     }
                 }
@@ -85,25 +101,25 @@ export class FlappyBird implements Game {
         }
 
         // Draw ground
-        for (let x = 0; x < this.width; x++) {
-            buffer.put({ x, y: this.height - 1, attr: { bgColor: 'darkGreen' } }, ' ');
+        for (let x = 0; x < this.playWidth; x++) {
+            buffer.put({ x: offsetX + x, y: offsetY + this.playHeight - 1, attr: { bgColor: 'yellow', color: 'green' } }, '▀');
         }
 
         // Draw Bird
-        const bx = Math.floor(this.width / 4);
+        const bx = Math.floor(this.playWidth / 4);
         const by = Math.floor(this.birdY);
-        if (by >= 0 && by < this.height) {
-            buffer.put({ x: bx, y: by, attr: { bgColor: 'yellow', color: 'black' } }, '>');
+        if (by >= 0 && by < this.playHeight - 1) {
+            buffer.put({ x: offsetX + bx, y: offsetY + by, attr: { color: 'brightYellow', bgColor: 'blue', bold: true } }, 'Ö');
         }
 
         // Score
-        buffer.put({ x: Math.floor(this.width/2 - 5), y: 2, attr: { color: 'white', bgColor: 'brightCyan', bold: true } }, `SCORE: ${this.score}`);
+        buffer.put({ x: offsetX + Math.floor(this.playWidth/2 - 5), y: offsetY + 2, attr: { color: 'white', bgColor: 'blue', bold: true } }, `SCORE: ${this.score}`);
 
         if (this.state === 'GAMEOVER') {
             const goMsg = " GAME OVER ";
             const resMsg = " Press SPACE to restart, ESC to exit ";
-            buffer.put({ x: Math.floor(this.width/2 - goMsg.length/2), y: Math.floor(this.height/2), attr: { color: 'white', bgColor: 'red', bold: true } }, goMsg);
-            buffer.put({ x: Math.floor(this.width/2 - resMsg.length/2), y: Math.floor(this.height/2)+2, attr: { color: 'white', bgColor: 'brightCyan' } }, resMsg);
+            buffer.put({ x: offsetX + Math.floor(this.playWidth/2 - goMsg.length/2), y: offsetY + Math.floor(this.playHeight/2), attr: { color: 'white', bgColor: 'red', bold: true } }, goMsg);
+            buffer.put({ x: offsetX + Math.floor(this.playWidth/2 - resMsg.length/2), y: offsetY + Math.floor(this.playHeight/2)+2, attr: { color: 'white', bgColor: 'blue' } }, resMsg);
         }
 
         buffer.draw({ delta: true });
@@ -116,12 +132,12 @@ export class FlappyBird implements Game {
         this.birdVelocity += this.gravity;
         this.birdY += this.birdVelocity;
 
-        const bx = Math.floor(this.width / 4);
+        const bx = Math.floor(this.playWidth / 4);
 
         if (this.frames % 50 === 0) {
             this.pipes.push({
-                x: this.width,
-                gapY: Math.floor(Math.random() * (this.height - 12)) + 2,
+                x: this.playWidth,
+                gapY: Math.floor(Math.random() * (this.playHeight - 12)) + 2,
                 passed: false
             });
         }
@@ -145,7 +161,7 @@ export class FlappyBird implements Game {
 
         this.pipes = this.pipes.filter(p => p.x > -10);
 
-        if (this.birdY < 0 || this.birdY >= this.height - 1) {
+        if (this.birdY < 0 || this.birdY >= this.playHeight - 1) {
             this.state = 'GAMEOVER';
         }
 
