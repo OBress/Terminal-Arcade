@@ -1,0 +1,18 @@
+{
+  "name": "tui-flappy-bird",
+  "version": "1.0.0",
+  "description": "Terminal Flappy Bird",
+  "bin": {
+    "flappybird": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node ./dist/index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.19.39",
+    "typescript": "^5.9.3"
+  }
+}
